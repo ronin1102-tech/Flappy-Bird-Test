@@ -1,39 +1,31 @@
 # QA handoff: `index.html`
 
-## Scope and method
+## QA run: 2026-11-01
 
-- Reviewed the single-file Flappy Bird canvas game in `index.html`.
-- Ran a JavaScript syntax parse of the inline script with Node.js v24.22.1: **passed**.
-- Browser automation was unavailable in this session, so rendering, keyboard/touch play, scoring, collisions, audio, persistence, and resizing were not exercised in a live browser.
+### Scope and method
 
-## Findings
+- Ran the repository's existing Node.js harnesses with Node.js v24.22.1: `smoke-test.js`, `bot-test.js`, and `batch-test.js`. All exited successfully.
+- The harnesses load and execute the inline game script with stubbed DOM/canvas APIs. They simulate gameplay and inspect the game's debug surface and local storage; they do not render pixels in a real browser.
+- Attempted a live browser check. The browser access host was unavailable, and navigation in the open Edge window did not reach the local game. Rendering, actual keyboard/touch input, audio, and viewport behavior therefore remain unverified live.
 
-### P1 — Browser zoom is disabled
+### Results
 
-**Location:** `index.html:5`
+- **Smoke test: passed.** Runtime simulation completed, practice mode remained alive through 3,600 simulated frames, and the harness exited successfully.
+- **Bot test: passed.** The simulated run scored 46 points, saved best score 46, and collected a shield bonus.
+- **Feature batch: passed.** Ghost seed/course reuse, daily score isolation, settings pause and persistence, achievements storage, and practice/daily mutual exclusion all passed.
+- The bot and batch harnesses exercised scoring and persistence paths; the smoke harness by itself ended in a playing state with score 0 after its restart sequence, so it is not evidence of score progression on its own.
 
-The viewport meta tag sets `maximum-scale=1` and `user-scalable=no`. This prevents users from zooming the page, which can make the game and its text inaccessible to people who need magnification.
+### Findings
 
-**Suggested fix:** Remove `maximum-scale` and `user-scalable`; keep `width=device-width, initial-scale=1` so browser zoom remains available.
+No failures were found in the automated harnesses.
 
-### P1 — Game information is only drawn to an unlabeled canvas
+The two accessibility issues listed in the previous handoff appear addressed in the current source:
 
-**Location:** `index.html:26`, with game instructions and score drawn in `drawUI()` around line 526.
+- The viewport declaration now allows browser zoom (`width=device-width, initial-scale=1`).
+- The game wrapper has an accessible name, instructions and HUD are exposed in the DOM, and a live status region mirrors game events. The canvas is hidden from assistive technology and includes fallback text.
 
-The canvas has no accessible name, role, fallback text, or equivalent DOM representation. Screen readers do not receive the controls, current score, best score, level, or game-over/restart state. The visible `SPACE or TAP` instructions are also canvas pixels, not accessible text.
+These source checks are not a substitute for checking the experience with a screen reader or real browser.
 
-**Suggested fix:** Give the canvas an accessible name and provide real DOM instructions plus a live status element for score/state updates. Make sure the interaction has a keyboard-accessible focus path and does not rely on canvas-only text.
+### Remaining live verification
 
-## Areas reviewed
-
-- Input listeners handle Space, Arrow Up, W, Enter, and pointer down; repeated keydown events are ignored.
-- The game has guarded local-storage reads/writes and graceful fallbacks for storage errors.
-- The resize routine scales the fixed 360×640 drawing area to fit the viewport.
-- Collision and scoring logic use the bird's bounding box and pipe positions.
-- Web Audio sound effects are synthesized, so the game does not require external audio assets.
-
-These are code-review observations, not live-browser confirmations.
-
-## Recommended next verification
-
-After addressing the accessibility findings, open the page in a desktop and mobile browser and verify: initial screen, each supported keyboard input, pointer/touch flap, collision/game-over, restart delay, score and best-score persistence, audio after the first gesture, and narrow/rotated viewport sizing.
+Open `index.html` in a desktop and mobile browser and verify initial rendering, Space/Arrow Up/W/Enter input, pointer/touch flap, collision and game-over, restart timing, score and best-score display, audio after a user gesture, narrow and rotated viewport sizing, and keyboard/screen-reader access to instructions and status.
