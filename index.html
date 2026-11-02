@@ -230,7 +230,8 @@
   Flappy Bird is played with the keyboard or touch. Press Space, Up Arrow, W, Enter, or tap the
   screen to flap. Fly through the gaps between pipes to score; a gold star is worth 3 points, worth
   more during a near-miss streak, and a blue bubble is a shield that absorbs one crash. Survive to
-  level 3 to unlock night levels. Press M to mute, P to pause, S for settings, G at the start
+  level 3 to unlock night levels. Press M to mute, P to pause and press again to resume (the
+  on-screen PAUSE and RESUME buttons do the same by tap), S for settings, G at the start
   screen to toggle practice mode, D for the daily challenge, and C after a crash to copy your
   result. Your best run strokes a ghost on the same course. After a crash, press any flap key
   again to restart. Focus the game area with Tab; its description includes your score, level, and
@@ -2038,19 +2039,26 @@
       ctx.fillStyle = '#ffffff';
       ctx.fillText((daily ? 'DLY ' : practice ? 'PRX ' : 'LVL ') + currentLevel(), 56, 32);
 
+      // On-screen PAUSE button (also tappable — mobile has no P key).
+      ctx.fillStyle = 'rgba(24, 34, 42, 0.66)';
+      roundRect(W - 98, 16, 84, 30, 15);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('II PAUSE', W - 56, 32);
+
       if (muted) {
         ctx.fillStyle = 'rgba(15, 55, 75, 0.66)';
-        roundRect(W - 98, 16, 84, 30, 15);
+        roundRect(W - 98, 50, 84, 30, 15);
         ctx.fill();
         ctx.fillStyle = '#bfeaff';
-        ctx.fillText('MUTED', W - 56, 32);
+        ctx.fillText('MUTED', W - 56, 66);
       }
       if (bird.shield && state === 'playing') {
         ctx.fillStyle = 'rgba(15, 55, 75, 0.66)';
-        roundRect(W - 98, muted ? 50 : 16, 84, 30, 15);
+        roundRect(W - 98, muted ? 84 : 50, 84, 30, 15);
         ctx.fill();
         ctx.fillStyle = '#9fdcff';
-        ctx.fillText('SHIELD', W - 56, (muted ? 50 : 16) + 16);
+        ctx.fillText('SHIELD', W - 56, (muted ? 84 : 50) + 16);
       }
 
       // Achievement toast, top-center under the score.
@@ -2241,7 +2249,20 @@
       ctx.fillStyle = 'rgba(10, 20, 36, 0.55)';
       ctx.fillRect(0, 0, W, H);
       bigText('PAUSED', W / 2, H / 2 - 12, 40);
-      bigText('P to resume', W / 2, H / 2 + 30, 20);
+      // Tappable resume button — any tap resumes, but a visible button makes
+      // that discoverable where there is no keyboard.
+      ctx.fillStyle = 'rgba(232, 200, 122, 0.95)';
+      roundRect(W / 2 - 62, H / 2 + 52, 124, 38, 19);
+      ctx.fill();
+      ctx.strokeStyle = '#3d2f16';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.font = 'bold 17px "Trebuchet MS", "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#3d2f16';
+      ctx.fillText('RESUME', W / 2, H / 2 + 71);
+      bigText('or press P', W / 2, H / 2 + 112, 15);
     }
 
     if (deathFlash > 0) {
@@ -2495,6 +2516,12 @@
 
   // ---- Input ----
   function press() {
+    // While paused any press (tap included) resumes — previously a tap here
+    // flapped the bird but left the game frozen, which made it feel stuck.
+    if (paused && !settingsOpen) {
+      togglePause();
+      return;
+    }
     if (state === 'ready') {
       start();
     } else if (state === 'playing') {
@@ -2611,10 +2638,25 @@
   }
 
   // Listen on the whole page so taps in the letterbox around the canvas count too.
+  // The on-screen pause chip sits at (W-98, 16, 84, 30) in logical units —
+  // keep this in sync with the drawUI block of the same name.
+  function tapIsPauseButton(e) {
+    var rect = canvas.getBoundingClientRect && canvas.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return false;
+    var lx = (e.clientX - rect.left) / rect.width * W;
+    var ly = (e.clientY - rect.top) / rect.height * H;
+    return lx >= W - 98 && lx <= W - 14 && ly >= 16 && ly <= 46;
+  }
+
   document.addEventListener('pointerdown', function (e) {
     if (e.button > 0) return;
     e.preventDefault();
     focusGame();
+    if (settingsOpen) return;
+    if (state === 'playing' && tapIsPauseButton(e)) {
+      togglePause(); // pause — nothing else on a button tap
+      return;
+    }
     press();
   });
   canvas.addEventListener('contextmenu', function (e) {
